@@ -41,33 +41,22 @@ openai.api_type = "azure"
 openai.api_base = "https://emailgeneratordemo.openai.azure.com/"
 openai.api_version = "2023-03-15-preview"
 openai.api_key = "4461d4ebc79a45bca18557145962a4f3"
-print('Till Here')
-def gen_mail_contents(email_contents):
-    
-    for topic in range(len(email_contents)):
-        input_text = email_contents[topic]
+#################################################################################################
+##################################
+###############
+#######
 
-        openaiq = OpenAI(temperature=.7,openai_api_key="4461d4ebc79a45bca18557145962a4f3",deployment_id="EmailGeneratorDemo02")
-    
-        prompt = """Write an email content based on the following information provided
+def gen_mail_contents(email_contents,sender,recipient,style):     
 
-Context: This email is regarding the 
-
-Question: Which libraries and model providers offer LLMs?
-
-Answer: """
-        print(openaiq(prompt))                                            
-        map_prompt = """Below is a section of a website about {prospect}
+        openaiq = OpenAI(temperature=0.7,openai_api_key="4461d4ebc79a45bca18557145962a4f3",deployment_id="EmailGeneratorDemo02")                                         
+        map_prompt = """Below is a section of a information about {prospect}
        Write a concise summary about {prospect}. If the information is not about {prospect}, exclude it from your summary.{text}
 % CONCISE SUMMARY:"""
         map_prompt_template = PromptTemplate(template=map_prompt, input_variables=["text", "prospect"])
 
         combine_prompt = """
-Your goal is to write a personalized outbound email for Campaign {Reason} by {company} to {prospect}.
-
-A good email is personalized and combines information about the two companies on how they can help each other.
-Be sure to use value selling: A sales methodology that focuses on how your product or service will provide value to the customer instead of focusing on price or solution.
-
+Your goal is to write the email content for {Reason} by {company} to {prospect}.
+A good campaign email combines information about the reason of the campaign.Length of email should be less than 50 words.
 % INFORMATION ABOUT {company}:
 {company_information}
 
@@ -75,15 +64,19 @@ Be sure to use value selling: A sales methodology that focuses on how your produ
 {text}
 
 % INCLUDE THE FOLLOWING PIECES IN YOUR RESPONSE:
-- Start the email with the sentence: "We love that {prospect} helps teams..." then insert what they help teams do.
-- The sentence: "We can help you do XYZ by ABC" Replace XYZ with what {prospect} does and ABC with what {company} does 
+
+- Start the email with 'We'
+- Keep the email in {style} tone 
+- Start with {Reason} of the email
+
 - A 1-2 sentence description about {company}, be brief
-- End your email with a call-to-action such as asking them to set up time to talk more
+- End your content with a call-to-action such as asking them to set up time to talk more
+
 
 % YOUR RESPONSE:
 """
         combine_prompt_template = PromptTemplate(template=combine_prompt, input_variables=["Reason", "company", "prospect", \
-                                                                         "text", "company_information"])
+                                                                         "text","company_information","style"])
 
         chain = load_summarize_chain(openaiq,
                              chain_type="map_reduce",
@@ -92,63 +85,113 @@ Be sure to use value selling: A sales methodology that focuses on how your produ
                              verbose=True
                             )
         text_splitter = CharacterTextSplitter()
+
+        ############################ Information about the Prospect
         with open("./BlackBaud.txt") as f:
             state_of_the_union = f.read()
             texts = text_splitter.split_text(state_of_the_union)
        
         docs = [Document(page_content=t) for t in texts[:3]]
 
-        output = chain({ "input_documents": docs,
-                "company": "Nagarro", \
-                "company_information" : "Nagarro is a leading global software engineering and technology consulting company that specializes in delivering innovative solutions and services to businesses across various industries. With a strong focus on digital transformation, Nagarro helps organizations harness the power of technology to drive growth, enhance customer experiences, and optimize operational efficiency. Their team of highly skilled professionals brings together expertise in areas such as software development, cloud computing, artificial intelligence, data analytics, and agile methodologies. Nagarro's client-centric approach ensures that they understand the unique challenges and requirements of each business, enabling them to deliver tailor-made solutions that meet their specific needs. Committed to quality and innovation, Nagarro constantly pushes boundaries to deliver cutting-edge solutions that enable businesses to stay ahead in the rapidly evolving digital landscape. Collaboration and teamwork are at the core of Nagarro's culture, fostering an environment where employees are encouraged to think creatively, share ideas, and work together to deliver exceptional results. With a global presence and extensive industry experience, Nagarro serves clients from around the world, ranging from startups to multinational corporations, helping them achieve their digital goals and drive success.",
-                "Reason" : "Uneducated India", \
-                "prospect" : "Blackbaud"
+        ############################ Information about the Sender
+        Filename="./"+sender+".txt"
+
+        with open(Filename) as f:
+            state_of_the_Naggaro = f.read()
+        ############################### Getting into chain    
+
+        output = chain({ "input_documents": docs,##These Docs are basically data about the Targeted customer
+                "company": sender, \
+                "company_information" :state_of_the_Naggaro ,\
+                  "Reason" : email_contents[0], \
+                "prospect" : recipient,\
+                "style" : style
                })
         langout=output['output_text']
-
-
-
-        rephrased_content = openai.Completion.create(
-            deployment_id="EmailGeneratorDemo02",
-            prompt=f"Rewrite the text to be elaborate and polite.\nAbbreviations need to be replaced.\nText: {input_text}\nRewritten text:",
-            
-            temperature=0.8,
-            max_tokens=len(input_text)*3,
-            top_p=0.8,
-            best_of=2,
-            frequency_penalty=0.0,
-            presence_penalty=0.0)
-
+        print(langout)       
         
-        email_contents[topic] = rephrased_content.get("choices")[0]['text']
+        return langout
+###################################################################
+################################
+###################
+
+def gen_mail_format(sender, recipient, style, email_contents,input_target):
+    email_contents = gen_mail_contents(email_contents,sender,recipient,style)
+    print(email_contents)
     return email_contents
+#########################################################
+#####################################
+####################
+
+def generate_Variable_content(Variable):
+    openaiq = OpenAI(temperature=0.7,openai_api_key="4461d4ebc79a45bca18557145962a4f3",deployment_id="EmailGeneratorDemo02")                                         
+    map_prompt = """Below is a section of a information about {prospect}
+       Write a concise summary about {prospect}. If the information is not about {prospect}, exclude it from your summary.{text}
+% CONCISE SUMMARY:"""
+    map_prompt_template = PromptTemplate(template=map_prompt, input_variables=["text", "prospect"])
+
+    combine_prompt = """
+Your goal is to write the one line for {Reason} by {company} to {prospect}.
+A good campaign email combines information about the reason of the campaign.Length of email should be less than 50 words.
+% INFORMATION ABOUT {company}:
+{company_information}
+
+% INFORMATION ABOUT {prospect}:
+{text}
+
+% INCLUDE THE FOLLOWING PIECES IN YOUR RESPONSE:
+
+- Start the email with 'We'
+- Keep the email in {style} tone 
+- Start with {Reason} of the email
+
+- A 1-2 sentence description about {company}, be brief
+- End your content with a call-to-action such as asking them to set up time to talk more
 
 
-def gen_mail_format(sender, recipient, style, email_contents):
-    
-    email_contents = gen_mail_contents(email_contents)
-    
+% YOUR RESPONSE:
+"""
+    combine_prompt_template = PromptTemplate(template=combine_prompt, input_variables=["Reason", "company", "prospect", \
+                                                                         "text","company_information","style"])
 
-    contents_str, contents_length = "", 0
-    for topic in range(len(email_contents)):  
-        contents_str = contents_str + f"\nContent{topic+1}: " + email_contents[topic]
-        contents_length += len(email_contents[topic]) 
+    chain = load_summarize_chain(openaiq,
+                             chain_type="map_reduce",
+                             map_prompt=map_prompt_template,
+                             combine_prompt=combine_prompt_template,
+                             verbose=True
+                            )
+    text_splitter = CharacterTextSplitter()
 
-    email_final_text = openai.Completion.create(
-        deployment_id="EmailGeneratorDemo02",
+        ############################ Information about the Prospect
+    with open("./BlackBaud.txt") as f:
+            state_of_the_union = f.read()
+            texts = text_splitter.split_text(state_of_the_union)
        
-        prompt=f"""Write a email body for {style} and includes Content1 and Content2 in that order. Having Points as 
-        %INFORMATION ABOUT {contents_str} in 4 points,\n\nSender: {sender}\nRecipient: {recipient} {contents_str}\n\nEmail Text:""",
+    docs = [Document(page_content=t) for t in texts[:3]] 
+    output = chain({ "input_documents": docs,##These Docs are basically data about the Targeted customer
+                "company": sender, \
+                "company_information" :state_of_the_Naggaro ,\
+                  "Reason" : email_contents[0], \
+                "prospect" : recipient,\
+                "style" : style
+               })
+    langout=output['output_text']
+    print(langout)       
         
-        temperature=0.4,
-        max_tokens=contents_length*2,
-        top_p=0.8,
-        best_of=2,
-        frequency_penalty=0.0,
-        presence_penalty=0.0)
+    return langout
 
-    return email_final_text.get("choices")[0]['text']
 
+    pass
+
+
+
+
+
+
+
+##########################################################
+#######################################
+#####################
 
 def main_gpt3emailgen():
 
@@ -167,7 +210,7 @@ def main_gpt3emailgen():
             input_c2 = st.text_input('', 'topic 2 (optional)')
 
             email_text = "" 
-            col1, col2, col3, space, col4,col5 = st.columns([5, 5, 5, 0.5, 5,5])
+            col1, col2, col3, space,col5,col6,col4 = st.columns([5, 5, 5, 0.5, 5,5,5])
             with col1:
                 input_sender = st.text_input('Sender Name', '[rephraise]')
             with col2:
@@ -176,14 +219,17 @@ def main_gpt3emailgen():
                 input_style = st.selectbox('Writing Style',
                                         ('formal', 'motivated', 'concerned', 'disappointed'),
                                         index=0)
+            with col6:
+                input_target=st.selectbox('Customer target',('High Value','Low Value'))
             with col5:
-                template = st.selectbox('Template Type',  ('Education','Outdoors'))   
-                if template=='Education':
-                    with open('Templates/Education.html', 'r') as file:  
+                template = st.selectbox('Template Type',  ('Template1','Template2'))   
+                if template!='':
+                    variable="Templates"+'\\'+template+".html"
+                    with open(variable, 'r') as file:  
                         html_string = file.read()
-                elif  template=='Outdoors':
-                    with open('Templates/Outdoors.html', 'r') as file:  
-                        html_string = file.read() 
+                    
+
+                
             with col4:
                 st.write("\n")  # add spacing
                 st.write("\n")  # add spacing
@@ -206,21 +252,27 @@ def main_gpt3emailgen():
                                 email_text = gen_mail_format(input_sender,
                                                             input_recipient,
                                                             input_style,
-                                                            input_contents)
+                                                            input_contents,input_target)
         
-    with st.container():
-        
-            st.components.v1.html(html_string,width=700, height=1500, scrolling=True)      
+          
     
     if email_text != "":
         st.write('\n')  # add spacing
-        st.subheader('\nHere is the Email Body Content\n')
-        with st.expander("SECTION - Email Output", expanded=True):
-            st.markdown(email_text)  #output the results
+        with st.container():
+
+            html_string=html_string.replace("DATA1 ",email_text)
+            html_string=html_string.replace("Variable1",input_c1)
+            print (html_string)
+                    
+            st.components.v1.html(html_string,width=700, height=1500, scrolling=True)
+            Variable2 = st.text_input('Variable2', 'Enter a Heading')
+            Variable3 = st.text_input('Variable3', 'Enter a Heading')
+
+      #  st.subheader('\nHere is the Email Body Content\n')
+      #  with st.expander("SECTION - Email Output", expanded=True):
+      #      st.markdown(email_text)  #output the results
 
     
-
-
 if __name__ == '__main__':
     # call main function
     main_gpt3emailgen()
